@@ -11,10 +11,40 @@ def generate_network(size):
 	w_matrix = np.zeros(size, size)
 	return adj_matrix, w_matrix
 
+#algorithm for iterating within a single issue:
+"""
+from https://ieeexplore.ieee.org/document/7170871
+
+yi(s,t+1)=wii(s)yi(s,t)+∑j=1j≠inwij(s)yj(s,t) where
+yi is opinion of node i
+wii is self confidence
+wij is weight node i gives to node j
+
+note that the weight matrix is stochastic so 
+wij(s)=(1−xi(s))cij
+where xi is self confidence
+cij is neighbours?
+
+"""
 def iterate_network(network, weights):
 	new_network = np.zeros(network.shape[0], network.shape[1])
 	return new_network
 
+#algorithm for iterating once issue has concluded:
+"""
+original:
+pi(s,t+1)=wii(s)pi(s,t)+∑j=1,j≠inwji(s)pj(s,t) where
+pi is perceived social power
+wii is self confidence
+wji is other nodes weighting of current node
+
+adjusted for finite time steps:
+xi(s+1)=xi(s)xi(s)+∑j=1n(1−xj(s))cjixj(s)
+xi(s+1) is self weight and == pi(s, T) for T time steps
+cji is interpersonal weights from neighbours
+
+
+"""
 def iterate_confidence(network, weights):
 	new_weights = np.zeros(weights.shape[0], weights.shape[1])
 	return new_weights
