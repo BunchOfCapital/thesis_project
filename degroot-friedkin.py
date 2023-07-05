@@ -21,6 +21,7 @@ def generate_network(size):
 	#opinions for each node are between 0 and 1
 	opinions = np.random.random(size)
 
+
 	return adj_matrix, w_matrix, opinions
 
 #algorithm for iterating within a single issue:
@@ -43,28 +44,28 @@ def iterate_network(network, weights, opinions):
 
 	#for each node in the network
 	for i in range(network.shape[0]):
-		#self weight * current opinion
+		#self confidence * current opinion
 		current_standing = weights[i][i] * opinions[i]
 
-		#find sum of adjacent nodes' opinions, adjusted to remain stochastic
+		#find sum of adjacent nodes' opinions
 		opinion_sum = 0
+		print("stochastic?: ", weights[i].sum())
 		for j in range(network.shape[1]):
-			#I have no idea why this is necessary or what its use is
+
 			if (weights[i][j] == 0):
 				print("fuck")
 				print(weights)
-			interpersonal_weight = (1 - weights[i][i]) / weights[i][j]
+			interpersonal_weight = weights[i][j] / (1 - weights[i][i])
 			print("interpersonal_weight = ", interpersonal_weight)
-			#print("interpersonal_weight is: ", interpersonal_weight)
+
 			#Relative interaction matrix C is 0 along main diagonal
 			if (i == j):
 				interpersonal_weight = 0
-			print("(1-weights[i][i]) = ", (1-weights[i][i]))
-			opinion_sum += weights[i][j] * opinions[j]
-			print("opinion sum = ", opinion_sum)
+
+			opinion_sum += interpersonal_weight * (1 - weights[i][i]) * opinions[j]
 
 		#perform final calculation
-		new_opinion = current_standing + (opinion_sum - current_standing)/2
+		new_opinion = current_standing + opinion_sum
 		new_opinions[i] = new_opinion
 
 	return new_opinions
@@ -96,7 +97,7 @@ def run_dgf(network_size, num_iterations, num_issues):
 		for j in range(num_iterations):
 			opinions = iterate_network(network, weights, opinions)
 			print(opinions)
-		weights = iterate_confidence(network, weights)
+		#weights = iterate_confidence(network, weights)
 
 	return network, weights, opinions
 
