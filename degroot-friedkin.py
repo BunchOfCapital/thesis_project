@@ -49,14 +49,11 @@ def iterate_network(network, weights, opinions):
 
 		#find sum of adjacent nodes' opinions
 		opinion_sum = 0
-		print("stochastic?: ", weights[i].sum())
+		#print("stochastic?: ", weights[i].sum())
 		for j in range(network.shape[1]):
 
-			if (weights[i][j] == 0):
-				print("fuck")
-				print(weights)
 			interpersonal_weight = weights[i][j] / (1 - weights[i][i])
-			print("interpersonal_weight = ", interpersonal_weight)
+			#print("interpersonal_weight = ", interpersonal_weight)
 
 			#Relative interaction matrix C is 0 along main diagonal
 			if (i == j):
@@ -87,6 +84,20 @@ cji is interpersonal weights from neighbours
 """
 def iterate_confidence(network, weights):
 	new_weights = np.zeros((weights.shape[0], weights.shape[1]))
+	#calculate left eigenvector of the weight matrix 
+	eigvals, eigvecs = np.linalg.eig(weights.T)
+	left_vec = eigvecs[:, 0].T
+	print(eigvecs.shape)
+	print(eigvals.real)
+	print( np.real_if_close(left_vec))
+
+	#update weights to reflect this
+
+	#adjust to remain stochastic
+
+
+
+
 	return weights
 
 #runs DeGroot-Friedkin simulation for a given number of iterations and issues
@@ -97,9 +108,9 @@ def run_dgf(network_size, num_iterations, num_issues):
 		for j in range(num_iterations):
 			opinions = iterate_network(network, weights, opinions)
 			print(opinions)
-		#weights = iterate_confidence(network, weights)
+		weights = iterate_confidence(network, weights)
 
 	return network, weights, opinions
 
-_, _, opinions = run_dgf(10, 100, 1)
+_, _, opinions = run_dgf(10, 100, 2)
 #print(opinions)
