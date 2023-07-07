@@ -39,8 +39,31 @@ where xi is self confidence
 cij is neighbours?
 
 """
+def gen_interpersonal_weights(weights):
+	interpersonal_weights = np.zeros((weights.shape[0], weights.shape[1]))
+
+	for i in range(weights.shape[0]):
+		for j in range(weights.shape[1]):
+			interpersonal_weight = weights[i][j] / (1 - weights[i][i])
+			if (i == j):
+				continue
+			else:
+				interpersonal_weights[i][j] = interpersonal_weight
+
+	#make matrix stochastic
+	for i in range(weights.shape[0]):
+		row_sum = np.sum(interpersonal_weights[i])
+		adjustment = 1 / row_sum
+		interpersonal_weights[i] = interpersonal_weights[i] * adjustment
+
+	return interpersonal_weights
+
+
+
+
 def iterate_network(network, weights, opinions):
 	new_opinions = np.zeros(network.shape[0])
+	interpersonal_weights = gen_interpersonal_weights(weights)
 
 	#for each node in the network
 	for i in range(network.shape[0]):
@@ -51,18 +74,10 @@ def iterate_network(network, weights, opinions):
 		opinion_sum = 0
 		#print("stochastic?: ", weights[i].sum())
 		for j in range(network.shape[1]):
-
-			interpersonal_weight = weights[i][j] / (1 - weights[i][i])
-			#print("interpersonal_weight = ", interpersonal_weight)
-
-			#Relative interaction matrix C is 0 along main diagonal
-			if (i == j):
-				interpersonal_weight = 0
-
-			opinion_sum += interpersonal_weight * (1 - weights[i][i]) * opinions[j]
+			opinion_sum += interpersonal_weights[i][j] * opinions[j]
 
 		#perform final calculation
-		new_opinion = current_standing + opinion_sum
+		new_opinion = current_standing + opinion_sum * (1 - weights[i][i])
 		new_opinions[i] = new_opinion
 
 	return new_opinions
@@ -83,22 +98,58 @@ cji is interpersonal weights from neighbours
 
 """
 def iterate_confidence(network, weights):
-	new_weights = np.zeros((weights.shape[0], weights.shape[1]))
-	#calculate left eigenvector of the weight matrix 
-	eigvals, eigvecs = np.linalg.eig(weights.T)
-	left_vec = eigvecs[:, 0].T
-	print(eigvecs.shape)
-	print(eigvals.real)
-	print( np.real_if_close(left_vec))
+	new_weights = weights.copy()
 
-	#update weights to reflect this
+	#for complete system with full knowledge:
+		#calculate left eigenvector of the weight matrix 
+		#eigvals, eigvecs = np.linalg.eig(weights.T)
+		#left_vec = eigvecs[:, 0].T
+		#update weights to reflect this
 
-	#adjust to remain stochastic
+		#adjust to remain stochastic
 
 
 
+	#for finite system:
 
-	return weights
+	interpersonal_weights = gen_interpersonal_weights(weights)
+	#assume timestep T = 1 because it doesn't work if it isnt'
+	for i in range(network.shape[0]):
+		#with T=1 p(s, T) becomes w[i][i]
+		prior_opinion = weights[i][i] * weights[i][i]
+
+		#sum incoming weights
+		influence_sum = 0
+		for j in range(network.shape[1]):
+			influence_sum += interpersonal_weights[j][i] * (1-weights[j][j]) * weights[j][j]
+
+		new_weights[i][i] = prior_opinion + influence_sum
+
+
+	#now scale the rest of the weights matrix to ensure it remains row stochastic
+	for i in range(network.shape[0]):
+
+		row_sum = np.sum(new_weights[i])
+		difference = 1 - row_sum
+
+		#we don't want to adjust the self weights, so we have to subtract it's adjustment from the other weights
+		adjustment = difference / (network.shape[0] - 1)
+		adjustment = (1 - new_weights[i][i]) / (row_sum - new_weights[i][i])
+
+		if (adjustment < 0):
+			print("Catastrophic calculation error")
+			exit()
+			break
+
+		for j in range(network.shape[1]):
+			if (i == j):
+				continue
+			else:
+				new_weights[i][j] = new_weights[i][j] * adjustment
+		#print("stochastic?: ", np.sum(new_weights[i]))
+	print(new_weights)
+
+	return new_weights
 
 #runs DeGroot-Friedkin simulation for a given number of iterations and issues
 def run_dgf(network_size, num_iterations, num_issues):
@@ -107,10 +158,10 @@ def run_dgf(network_size, num_iterations, num_issues):
 	for i in range(num_issues):
 		for j in range(num_iterations):
 			opinions = iterate_network(network, weights, opinions)
-			print(opinions)
+			#print(opinions)
 		weights = iterate_confidence(network, weights)
 
 	return network, weights, opinions
 
-_, _, opinions = run_dgf(10, 100, 2)
+_, _, opinions = run_dgf(10, 10000, 10)
 #print(opinions)
