@@ -1,21 +1,36 @@
 #Written by Joel Wildman (22984156)
 import numpy as np
+from matplotlib import pyplot as plt
 
 # PFS model operates on a lattice divided into social ranks
 # this approach is not compatible with interaction graphs like follower graphs
+#each node possesses a private opinion x(i), public opinion z(i), threshold for falsification y(i),
+# threshold for internalising k(i) = 3, number of previous falsifications φ, and previously expressed opinion z*(i)
+
+internalising_threshold = 3
+
+SR = 0
+INT_OPINION = 1
+EXT_OPINION = 2
+FAKER_THRESHOLD = 3 
+PREV_FAKES = 4
+PREV_EXPRESSION = 5
 
 #generates a lattice of nodes in the form of an adjacency matrix
 def gen_lattice(size):
 	#size must be a square number
+	if (size ** 0.5 % 1.0 != 0.0):
+		print("size must be a square number for a square lattice ( s = n*n )")
+		exit()
 	lattice_length = int(size ** 0.5)
 	network = np.zeros((size, size))
 
 	for i in range(size):
-		#nodes to the left and right are connected
-		if (i % lattice_length == 0): #if it's the first in the row, wrap around
-			network[i][i+1] = 1 
-			network[i][i+lattice_length-1] = 1
-		elif (i % lattice_length == lattice_length - 1): #if it's the last in the row, wrap around
+		#left and right nodes
+		if (i % lattice_length == 0): #if it's in the first column, wrap around
+			network[i][i+1] = 1 # right node
+			network[i][i+lattice_length-1] = 1 #left node
+		elif (i % lattice_length == lattice_length - 1): #if it's in the last column, wrap around
 			network[i][i-(lattice_length-1)] = 1
 			network[i][i-1] = 1
 		else:
@@ -23,7 +38,126 @@ def gen_lattice(size):
 			network[i][i-1] = 1
 
 		#nodes above and below are connected
+		if (i/lattice_length < 1): #if node is in first row, only connect below
+			network[i][i+lattice_length] = 1 
 
+		elif ((i+1)/lattice_length >= lattice_length-1): #if node is in last row, only connect above
+			network[i][i-lattice_length] = 1
+		else:
+			network[i][i-lattice_length] = 1
+			network[i][i+lattice_length] = 1
+
+	#diagonals
+
+	return network
+
+
+def gen_agents(size, segregation):
+
+	if (size ** 0.5 % 1.0 != 0.0):
+		print("size must be a square number for a square lattice ( s = n*n )")
+		exit()
+
+	#social rank of each agent follows a series of uniform distributions 
+	sr = []
+	#this distribution is on page 9 of the paper, page 393 of the journal
+	sr_distribution = [	0.010625,
+						0.03125,
+						0.083125,
+						0.125,
+						0.15375,
+						0.1925,
+						0.15375,
+						0.125,
+						0.083125,
+						0.03125,
+						0.010625]
+	for proportion in range(len(sr_distribution)):
+		#avoid filling the sr list with empty arrays
+		if (int(sr_distribution[proportion]*size) == 0):
+			continue
+		#there are 11 uniform sr distributions, starting at U(0) and increasing by 0.1 from U(0.05, 0.15)
+		sr_range = (max((proportion*0.1)-0.05, 0.0), min((proportion*0.1)+0.05, 1.0))
+		sr.append(np.random.uniform(low=sr_range[0], high=sr_range[1], size=int(sr_distribution[proportion]*size + 1) ))
+	sr = np.hstack(np.array(sr, dtype=object))
+	
+	if (sr.size != size):
+		print("be aware new array does not match input array size, snipping")
+		print(len(sr), size)
+		sr = sr[:size]
+
+	#this 2d matrix will store all agent data
+	agents = np.zeros((sr.size, 6))
+	agents[:, SR] = sr
+
+	#at t=0 internal opinion x(i)=sr(i)
+	agents[:, INT_OPINION] = np.copy(sr)
+
+	#at t=0 external opinion z(i) exactly represents their internal opinion
+	agents[:, EXT_OPINION][agents[:, INT_OPINION] > 0.5] = 1
+
+	#at t=0 threshold for falsification y(i) is a uniform distribution
+	# agents[:, FAKER_THRESHOLD][agents[:, INT_OPINION] < 0.5] = np.random.rand() * 0.5 + 0.5
+	# agents[:, FAKER_THRESHOLD][agents[:, INT_OPINION] >= 0.5] = np.random.rand() * 0.5
+
+	#need to use a loop here to generate a new rand() seed for each
+	for i in range(sr.size):
+		if (agents[i][INT_OPINION] < 0.5):
+			agents[i][FAKER_THRESHOLD] = np.random.rand() * 0.5 + 0.5
+		else:
+			agents[i][FAKER_THRESHOLD] = np.random.rand() * 0.5
+
+	#at t=1 number of previous falsifications φ=0 (unnecessary operation, kept for clarity)
+	agents[:, PREV_FAKES] = np.zeros(agents[:, INT_OPINION].size) 
+
+	#at t=1 previous expressed opinion z*(i)=z(i)
+	agents[:, PREV_EXPRESSION] = np.copy(agents[:, EXT_OPINION])
+
+	#print(agents)
+
+	#now rearrange agents to fit class posiions (high, medium, low, medium) bands (see page 394)
+	#manually find the borders of medium class
+	# low_border = 0
+	# high_border = 0
+	# for i in range(sr.size):
+	# 	if (sr[i] > 0.35 and low_border == 0):
+	# 		low_border = i-1
+	# 	if (sr[i] > 0.65 and high_border == 0):
+	# 		high_border = i-1
+
+	# #we take half the medium class and swap it with the low class
+	# tmp = agents[:low_border][:]
+	# print(tmp)
+
+
+	# #now apply segregation level, by placing agents in a separate class area
+	# if (segregation < 1.0 and segregation > 0.0):
+	# 	for i in range(sr.size):
+	# 		if (np.random.rand() > segregation):
+	# 			a = 1
+	# 			#swap this agent with another class agent
+	# 			#we know class divisions occur at sum(sr_distribution[:4]) and sum(sr_distribution[:7])
+
+
+	return agents
+
+
+def draw_agents(agents):
+	picture = np.zeros((int(agents.shape[0] ** 0.5), int(agents.shape[0] ** 0.5),  3))
+	#picture[agents[:, SR] < 0.35] = np.array([200, 50, 20])
+	print(picture.shape)
+	for i in range(agents.shape[0]):
+		if (agents[i][SR] < 0.35):
+			picture[i%int((agents.shape[0] ** 0.5))][int(i/agents.shape[0] ** 0.5)] = np.array([200, 50, 20], dtype=int)
+		elif (agents[i][SR] < 0.65):
+			picture[i%int((agents.shape[0] ** 0.5))][int(i/agents.shape[0] ** 0.5)] = np.array([100, 100, 20], dtype=int)
+		elif (agents[i][SR] > 0.65):
+			picture[i%int((agents.shape[0] ** 0.5))][int(i/agents.shape[0] ** 0.5)] = np.array([20, 20, 150], dtype=int)
+			print(i%int((agents.shape[0] ** 0.5)), int(i/agents.shape[0] ** 0.5))
+	print(picture)
+	picture[10][10] = np.array([0, 0, 0], dtype=int)
+	a = plt.imshow(picture)
+	plt.show()
 	return
 
 
@@ -58,4 +192,14 @@ def gen_lattice(size):
 #	φ is incremented by 1 is the falsification is valid, nothing happens if it is not valid
 
 # Apply Goffman heuristic
-# 
+# 	if there are enough high rank conflicting opinions in the area, an agent will fake their opinion
+#	however this does not count towards the coherence heuristic
+
+
+def main(size):
+	agents = gen_agents(size, 1)
+	draw_agents(agents)
+	return
+
+if __name__ == "__main__":
+    main(400)
