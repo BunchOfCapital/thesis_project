@@ -1,6 +1,12 @@
 #Written by Joel Wildman (22984156)
 import numpy as np
+import matplotlib.patches as mpatches
 from matplotlib import pyplot as plt
+import random
+import sys
+
+#TODO: agent in position 0 is not swapped with the rest of low class
+#TODO: diagonal connections in lattice
 
 # PFS model operates on a lattice divided into social ranks
 # this approach is not compatible with interaction graphs like follower graphs
@@ -48,7 +54,7 @@ def gen_lattice(size):
 			network[i][i+lattice_length] = 1
 
 	#diagonals
-
+	print(network)
 	return network
 
 
@@ -97,9 +103,6 @@ def gen_agents(size, segregation):
 	agents[:, EXT_OPINION][agents[:, INT_OPINION] > 0.5] = 1
 
 	#at t=0 threshold for falsification y(i) is a uniform distribution
-	# agents[:, FAKER_THRESHOLD][agents[:, INT_OPINION] < 0.5] = np.random.rand() * 0.5 + 0.5
-	# agents[:, FAKER_THRESHOLD][agents[:, INT_OPINION] >= 0.5] = np.random.rand() * 0.5
-
 	#need to use a loop here to generate a new rand() seed for each
 	for i in range(sr.size):
 		if (agents[i][INT_OPINION] < 0.5):
@@ -113,50 +116,69 @@ def gen_agents(size, segregation):
 	#at t=1 previous expressed opinion z*(i)=z(i)
 	agents[:, PREV_EXPRESSION] = np.copy(agents[:, EXT_OPINION])
 
-	#print(agents)
-
 	#now rearrange agents to fit class posiions (high, medium, low, medium) bands (see page 394)
 	#manually find the borders of medium class
-	# low_border = 0
-	# high_border = 0
-	# for i in range(sr.size):
-	# 	if (sr[i] > 0.35 and low_border == 0):
-	# 		low_border = i-1
-	# 	if (sr[i] > 0.65 and high_border == 0):
-	# 		high_border = i-1
+	low_border = 0
+	high_border = 0
+	for i in range(sr.size):
+		if (sr[i] > 0.35 and low_border == 0):
+			low_border = i-1
+		if (sr[i] > 0.65 and high_border == 0):
+			high_border = i-1
+	midpoint = low_border*2
+	print(low_border, midpoint, high_border)
+	#we take half the medium class and swap it with the low class
+	tmp = np.copy(agents[0:low_border][:])
+	agents[0:low_border][:] = agents[low_border:midpoint][:]
+	agents[low_border:midpoint][:] = tmp
 
-	# #we take half the medium class and swap it with the low class
-	# tmp = agents[:low_border][:]
-	# print(tmp)
+	#now apply segregation level, by placing agents in a separate class area
+	if (segregation < 1.0 and segregation > 0.0):
+		for i in range(sr.size):
+			if (np.random.rand() > segregation):
+				#swap this agent with another class agent
+				#we know class divisions occur at sum(sr_distribution[:4]) and sum(sr_distribution[:7])
 
-
-	# #now apply segregation level, by placing agents in a separate class area
-	# if (segregation < 1.0 and segregation > 0.0):
-	# 	for i in range(sr.size):
-	# 		if (np.random.rand() > segregation):
-	# 			a = 1
-	# 			#swap this agent with another class agent
-	# 			#we know class divisions occur at sum(sr_distribution[:4]) and sum(sr_distribution[:7])
-
-
+				#low class to middle or high area
+				if (agents[i][SR] <= 0.35):
+					exchange = random.choice(np.arange(agents.shape[0])[np.r_[0:low_border,midpoint:agents.shape[0]]])
+					tmp = np.copy(agents[exchange])
+					agents[exchange] = agents[i]
+					agents[i] = tmp
+				#middle class to low or high area
+				elif (agents[i][SR] <= 0.65):
+					exchange = random.choice(np.arange(agents.shape[0])[np.r_[low_border:midpoint, high_border:agents.shape[0]]])
+					tmp = np.copy(agents[exchange])
+					agents[exchange] = agents[i]
+					agents[i] = tmp
+				else:
+					exchange = random.choice(np.arange(high_border))
+					tmp = np.copy(agents[exchange])
+					agents[exchange] = agents[i]
+					agents[i] = tmp
 	return agents
 
 
 def draw_agents(agents):
 	picture = np.zeros((int(agents.shape[0] ** 0.5), int(agents.shape[0] ** 0.5),  3))
 	#picture[agents[:, SR] < 0.35] = np.array([200, 50, 20])
-	print(picture.shape)
+	#print(picture.shape)
 	for i in range(agents.shape[0]):
 		if (agents[i][SR] < 0.35):
-			picture[i%int((agents.shape[0] ** 0.5))][int(i/agents.shape[0] ** 0.5)] = np.array([200, 50, 20], dtype=int)
+			picture[i%int((agents.shape[0] ** 0.5))][int(i/agents.shape[0] ** 0.5)] = 0.2
 		elif (agents[i][SR] < 0.65):
-			picture[i%int((agents.shape[0] ** 0.5))][int(i/agents.shape[0] ** 0.5)] = np.array([100, 100, 20], dtype=int)
+			picture[i%int((agents.shape[0] ** 0.5))][int(i/agents.shape[0] ** 0.5)] = 0.5
 		elif (agents[i][SR] > 0.65):
-			picture[i%int((agents.shape[0] ** 0.5))][int(i/agents.shape[0] ** 0.5)] = np.array([20, 20, 150], dtype=int)
-			print(i%int((agents.shape[0] ** 0.5)), int(i/agents.shape[0] ** 0.5))
-	print(picture)
-	picture[10][10] = np.array([0, 0, 0], dtype=int)
-	a = plt.imshow(picture)
+			picture[i%int((agents.shape[0] ** 0.5))][int(i/agents.shape[0] ** 0.5)] = 0.8
+	#print(picture)
+	fig, ax = plt.subplots()
+	#colour map doesn't work for some reason
+	a = plt.imshow(picture, cmap='seismic', interpolation='nearest', vmin=0, vmax=1)
+
+	patches = [	mpatches.Patch(facecolor=(0.2, 0.2, 0.2)), 
+				mpatches.Patch(facecolor=(0.5, 0.5, 0.5)),
+				mpatches.Patch(facecolor=(0.8, 0.8, 0.8))]
+	plt.legend(patches, ["Low Class", "Middle Class", "High Class"])
 	plt.show()
 	return
 
@@ -195,11 +217,19 @@ def draw_agents(agents):
 # 	if there are enough high rank conflicting opinions in the area, an agent will fake their opinion
 #	however this does not count towards the coherence heuristic
 
+def iterate_network(network, agents):
+	#apply coherence heuristic for each node:
+	for i in range(agents):
+		
 
-def main(size):
-	agents = gen_agents(size, 1)
+def main(size, segregation):
+	network = gen_lattice(size)
+	agents = gen_agents(size, segregation)
 	draw_agents(agents)
 	return
 
 if __name__ == "__main__":
-    main(400)
+	if (len(sys.argv) != 3):
+		print("Please enter a network size and segregation level")
+		exit()
+	main(int(sys.argv[1]), float(sys.argv[2]))
