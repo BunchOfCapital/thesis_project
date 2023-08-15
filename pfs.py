@@ -4,13 +4,16 @@ import matplotlib.patches as mpatches
 from matplotlib import pyplot as plt
 import random
 import sys
+import math
 
 #TODO: agent in position 0 is not swapped with the rest of low class
 #TODO: diagonal connections in lattice
+#TODO: previously expressed opinion is deprecated, remove
 
 # PFS model operates on a lattice divided into social ranks
 # this approach is not compatible with interaction graphs like follower graphs
-#each node possesses a private opinion x(i), public opinion z(i), threshold for falsification y(i), provisional threshold y*(i)
+# to somewhat bridge this gap I have treated the lattice as an adjacency matrix, 4x4 neihgbourhoods are replaced with nodes within 3 jumps
+# each node possesses a private opinion x(i), public opinion z(i), threshold for falsification y(i), provisional threshold y*(i)
 # threshold for internalising k(i) = 3, number of previous falsifications φ, and previously expressed opinion z*(i)
 
 internalising_threshold = 3
@@ -57,12 +60,39 @@ def gen_lattice(size):
 	#diagonals
 	return network
 
+def parse_file(filename,):
+	values = np.loadtxt(filename, dtype=int)
+	print(values.shape)
+	return values
+
+#this dataset has 4039 nodes
+def gen_facebook_net(size):
+	edges = parse_file("facebook_combined.txt")
+	network = np.zeros((size,size))
+	for i in range(edges.shape[0]):
+		network[edges[i][0]][edges[i][1]] = 1
+	return network
+
+
+# agent notes
+
+# social ranks are U[0, 1], with low rank being [0, 0.35], medium [0.35, 0.65], high [0.65, 1]
+# these ranks do not change over the course of the simulation
+
+#public opinion z(i) is 1 or 0
+
+#private opinion x(i) is continuous [0, 1]
+# initial (t=0) private opinion = f(sr(i)), that is social rank of that individual
+# I think this is bullshit and will comment so in the thesis
+
+#threshold for preference falsification y(i) dictates how willing an agent is to fake their belief
+# U[0.5, 1] if x(i) < 0.5 and U[0, 0.5) if x(i) ≥ 0.5
+#will be updated as simulation progresses
+
+# segregation level (S) [0, 1] dictates how much mixing there is between social classes when t=0
+# if S < 1, a random sample of agents are exchanged with another agent from outside their class
 
 def gen_agents(size, segregation):
-
-	if (size ** 0.5 % 1.0 != 0.0):
-		print("size must be a square number for a square lattice ( s = n*n )")
-		exit()
 
 	#social rank of each agent follows a series of uniform distributions 
 	sr = []
@@ -163,7 +193,16 @@ def gen_agents(size, segregation):
 	return agents
 
 
-def get_picture(agents):
+def get_pictures(all_agents):
+	if (all_agents.shape[0] ** 0.5 % 1.0 != 0.0):
+		print("Agents are not on a lattice, snipping to fit square image")
+		closest_square = int(math.sqrt(all_agents.shape[0]))**2
+		agents = all_agents[:closest_square, :closest_square]
+		print(agents.shape)
+	else:
+		agents = all_agents
+		
+
 	ranks = np.zeros((int(agents.shape[0] ** 0.5), int(agents.shape[0] ** 0.5),  3))
 	internal = np.zeros((int(agents.shape[0] ** 0.5), int(agents.shape[0] ** 0.5),  3))
 	external = np.zeros((int(agents.shape[0] ** 0.5), int(agents.shape[0] ** 0.5),  3))
@@ -180,25 +219,8 @@ def get_picture(agents):
 	
 	return ranks, internal, external 
 
-#notes
 
-# social ranks are U[0, 1], with low rank being [0, 0.35], medium [0.35, 0.65], high [0.65, 1]
-# these ranks do not change over the course of the simulation
-
-#public opinion z(i) is 1 or 0
-
-#private opinion x(i) is continuous [0, 1]
-# initial (t=0) private opinion = f(sr(i)), that is social rank of that individual
-# I think this is bullshit and will comment so in the thesis
-
-#threshold for preference falsification y(i) dictates how willing an agent is to fake their belief
-# U[0.5, 1] if x(i) < 0.5 and U[0, 0.5) if x(i) ≥ 0.5
-#will be updated as simulation progresses
-
-# segregation level (S) [0, 1] dictates how much mixing there is between social classes when t=0
-# if S < 1, a random sample of agents are exchanged with another agent from outside their class
-
-#simulation:
+#simulation notes:
 #roundstart:
 # update coherence heuristic to match private opinion with public one (to a degree)
 	# if φ is the number of previous falsifications and k(i) is a threshold for internalizing z(i)
@@ -243,8 +265,10 @@ def iterate_network(network, agents, P):
 	percieved_opinions = np.clip(percieved_opinions, 0.0, 1.0)
 	#print(percieved_opinions)
 
-	#iterate over all agents, updating in order
-	for i in range(agents.shape[0]):
+	#iterate over all agents, updating in random order
+	agent_list = np.arange(agents.shape[0])
+	random.shuffle(agent_list)
+	for i in agent_list:
 
 		# firstapply coherence heuristic for each node:
 		if (agents[i][PREV_FAKES] >= internalising_threshold):
@@ -261,15 +285,14 @@ def iterate_network(network, agents, P):
 		#we need highest rank agent in the neighbourhood (within 3 steps)
 		neighbours = find_neighbours(network, i, 0, [])
 		#sort by social rank
-		influences = sorted(list(neighbours), key=lambda agent: agents[agent][SR])
-
+		influences = sorted(list(neighbours), key=lambda agent: agents[agent][SR], reverse=True)
 		#see equation 3 (p. 397)
 		#we provisionally adjust the falsification threshold for these agents
 		if (agents[i][SR] < 0.5): 
 			goffman_influence = abs(agents[i][FAKER_THRESHOLD] - agents[i][INT_OPINION]) / (1 + abs(agents[i][SR] - agents[influences[0]][SR]) )
-			if (agents[i][INT_OPINION] < 0.5 and agents[influences[0]][PREV_EXPRESSION] == 1):
+			if (agents[i][INT_OPINION] < 0.5 and agents[influences[0]][EXT_OPINION] == 1):
 				agents[i][PROV_THRESHOLD] = agents[i][INT_OPINION] + goffman_influence
-			if (agents[i][INT_OPINION] >= 0.5 and agents[influences[0]][PREV_EXPRESSION]  == 0):
+			if (agents[i][INT_OPINION] >= 0.5 and agents[influences[0]][EXT_OPINION]  == 0):
 				agents[i][PROV_THRESHOLD] = agents[i][INT_OPINION] - goffman_influence
 
 		#expected opinion of the agent is based on their neighbours
@@ -280,6 +303,7 @@ def iterate_network(network, agents, P):
 		expected_opinion = expected_opinion/len(neighbours)
 
 		#calculate final reference opinion for this agent, using variable P which scales influence of global & local opinions
+		#higher P means agents are influenced more by the global opinion and less by their neighbours
 		reference_opinion = (P * percieved_opinions[i]) + ((1 - P) * expected_opinion)
 
 		#the agent will now express an opinion
@@ -287,15 +311,21 @@ def iterate_network(network, agents, P):
 			agents[i][EXT_OPINION] = 1
 			#if an agent has falsified its opinions due to goffman heuristic, do not count it towards φ
 			if (agents[i][INT_OPINION] < 0.5):
+				if (agents[i][PROV_THRESHOLD] > agents[i][FAKER_THRESHOLD]):
+					print("WE FUCKED UP")
 				if (reference_opinion > agents[i][PROV_THRESHOLD] and reference_opinion < agents[i][FAKER_THRESHOLD]):
-					agents[i][PREV_FAKES] += 0 #for clarity
+					#if agent does not fake opinion, count is reset
+					agents[i][PREV_FAKES] = 0 
 				else:
+					#otherwise it increases doubt
 					agents[i][PREV_FAKES] += 1
 		else:
 			agents[i][EXT_OPINION] = 0
 
 			if (agents[i][INT_OPINION] >= 0.5):
 				agents[i][PREV_FAKES] += 1
+			else:
+				agents[i][PREV_FAKES] = 0
 
 
 		#provisional threshold is reset if it has been used this round
@@ -303,37 +333,47 @@ def iterate_network(network, agents, P):
 			agents[i][PROV_THRESHOLD] = agents[i][FAKER_THRESHOLD]
 	return agents
 
+
 def main(size, segregation, P, iterations):
 	print("Generating network...")
-	network = gen_lattice(size)
+	#facebook dataset contains 4039 nodes
+	network = gen_facebook_net(4039)
+	print(network)
+	#network = gen_lattice(size)
 	print("Generating agents...")
-	agents = gen_agents(size, segregation)
+	agents = gen_agents(network.shape[0], segregation)
+	#agents = gen_agents(size, segregation)
 
 	plt.ion()
-	ranks, internal, external = get_picture(agents)
-	fig1, [ax1, ax2, ax3] = plt.subplots(nrows=1, ncols=3)
+	ranks, internal, external = get_pictures(agents)
+	fig1, ax = plt.subplots(nrows=2, ncols=3)
 
+	#main heatmaps
 	#colour map doesn't work for some reason
-	im1 = ax1.imshow(ranks, cmap='seismic', interpolation='nearest', vmin=0, vmax=1)
-	im2 = ax2.imshow(internal, cmap='seismic', interpolation='nearest', vmin=0, vmax=1)
-	im3 = ax3.imshow(external, cmap='seismic', interpolation='nearest', vmin=0, vmax=1)
+	im1 = ax[0][0].imshow(ranks, cmap='seismic', interpolation='nearest', vmin=0, vmax=1)
+	im2 = ax[0][1].imshow(internal, cmap='seismic', interpolation='nearest', vmin=0, vmax=1)
+	im3 = ax[0][2].imshow(external, cmap='seismic', interpolation='nearest', vmin=0, vmax=1)
 
-	plt.title("Preference Falsification Simulation")
+	#histograms
+	im4 = ax[1][0].hist(agents[:,SR], bins=50, range=(0.0, 1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
+	im5 = ax[1][1].hist(agents[:,INT_OPINION], bins=50, range=(0.0, 1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
+	im6 = ax[1][2].hist(agents[:,EXT_OPINION], bins=2, range=(0.0,1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
+
 	patches = [	mpatches.Patch(facecolor=(0.2, 0.2, 0.2)), 
 				mpatches.Patch(facecolor=(0.5, 0.5, 0.5)),
 				mpatches.Patch(facecolor=(0.8, 0.8, 0.8))]
-	plt.legend(patches, ["Low Class", "Middle Class", "High Class"])
-	ax1.set_title("Social Ranks")
-	ax2.set_title("Internal Opinions")
-	ax3.set_title("External Opinions")
-	iterlabel = plt.text(10, -25, "Iteration 0")
+	ax[1][0].legend(patches, ["Low Class", "Middle Class", "High Class"], loc=(0.0, -0.7))
+	ax[0][0].set_title("Social Ranks")
+	ax[0][1].set_title("Internal Opinions")
+	ax[0][2].set_title("External Opinions")
+	iterlabel = plt.text(0.0, 20.0, "Iteration 0")
 	plt.show()
 
 	for i in range(iterations):
 		print("Running iteration ", i+1, "...")
 
 		#update charts
-		ranks, internal, external = get_picture(agents)
+		ranks, internal, external = get_pictures(agents)
 		iterlabel.set_text("Iteration " + str(i+1))
 
 		im1.set_data(ranks)
@@ -343,6 +383,17 @@ def main(size, segregation, P, iterations):
 		fig1.canvas.flush_events()
 
 		agents = iterate_network(network, agents, P)
+
+		external_average = get_general_opinion(agents)
+		internal_average = agents[:,INT_OPINION].sum()/agents.shape[0]
+		print("Internal avg: ", internal_average, " External avg: ", external_average)
+
+	fig2, ax2 = plt.subplots(nrows=1, ncols=2)
+	ax2[0].set_title("Internal Opinions")
+	ax2[1].set_title("External/Expressed Opinions")
+	final_opinions = ax2[0].hist(agents[:,INT_OPINION], bins=50, range=(0.0, 1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
+	final_expressions = ax2[1].hist(agents[:,EXT_OPINION], bins=2, range=(0.0,1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
+	plt.show()
 
 	input()
 	return
