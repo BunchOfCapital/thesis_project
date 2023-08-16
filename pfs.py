@@ -288,19 +288,29 @@ def iterate_network(network, agents, P):
 		influences = sorted(list(neighbours), key=lambda agent: agents[agent][SR], reverse=True)
 		#see equation 3 (p. 397)
 		#we provisionally adjust the falsification threshold for these agents
-		if (agents[i][SR] < 0.5): 
-			goffman_influence = abs(agents[i][FAKER_THRESHOLD] - agents[i][INT_OPINION]) / (1 + abs(agents[i][SR] - agents[influences[0]][SR]) )
-			if (agents[i][INT_OPINION] < 0.5 and agents[influences[0]][EXT_OPINION] == 1):
-				agents[i][PROV_THRESHOLD] = agents[i][INT_OPINION] + goffman_influence
-			if (agents[i][INT_OPINION] >= 0.5 and agents[influences[0]][EXT_OPINION]  == 0):
-				agents[i][PROV_THRESHOLD] = agents[i][INT_OPINION] - goffman_influence
+		if (agents[i][SR] < 0.5):
+			#goffman heuristic is only possible if the agent has neighbours 
+			if (len(influences) != 0):
+				goffman_influence = abs(agents[i][FAKER_THRESHOLD] - agents[i][INT_OPINION]) / (1 + abs(agents[i][SR] - agents[influences[0]][SR]) )
+				if (agents[i][INT_OPINION] < 0.5 and agents[influences[0]][EXT_OPINION] == 1):
+					agents[i][PROV_THRESHOLD] = agents[i][INT_OPINION] + goffman_influence
+				if (agents[i][INT_OPINION] >= 0.5 and agents[influences[0]][EXT_OPINION]  == 0):
+					agents[i][PROV_THRESHOLD] = agents[i][INT_OPINION] - goffman_influence
 
 		#expected opinion of the agent is based on their neighbours
-		expected_opinion = 0
-		for j in range(len(neighbours)):
-			if (agents[neighbours[j]][EXT_OPINION] == 1):
-				expected_opinion += 1
-		expected_opinion = expected_opinion/len(neighbours)
+		if (len(neighbours) == 0):
+			expected_opinion = 0
+			for j in range(len(neighbours)):
+				if (agents[neighbours[j]][EXT_OPINION] == 1):
+					expected_opinion += 1.0
+			if (expected_opinion == 0):
+				expected_opinion = 0 #no change (but also no division by 0)
+			else:
+				expected_opinion = expected_opinion/len(neighbours)
+		#if an agent has no neighbours at all, it's opinion will be purely influenced by global expressions
+		else:
+			expected_opinion = percieved_opinions[i]
+		
 
 		#calculate final reference opinion for this agent, using variable P which scales influence of global & local opinions
 		#higher P means agents are influenced more by the global opinion and less by their neighbours
@@ -334,15 +344,20 @@ def iterate_network(network, agents, P):
 	return agents
 
 
-def main(size, segregation, P, iterations):
+def main(size, segregation, P, iterations, sample_data=False):
 	print("Generating network...")
-	#facebook dataset contains 4039 nodes
-	network = gen_facebook_net(4039)
-	print(network)
-	#network = gen_lattice(size)
+	if (sample_data):
+		#facebook dataset contains 4039 nodes
+		network = gen_facebook_net(size)
+		print(network.shape)
+	else:
+		network = gen_lattice(size)
+
 	print("Generating agents...")
-	agents = gen_agents(network.shape[0], segregation)
-	#agents = gen_agents(size, segregation)
+	if (sample_data):
+		agents = gen_agents(network.shape[0], segregation)
+	else:
+		agents = gen_agents(size, segregation)
 
 	plt.ion()
 	ranks, internal, external = get_pictures(agents)
@@ -399,11 +414,15 @@ def main(size, segregation, P, iterations):
 	return
 
 if __name__ == "__main__":
-	#run sample values
-	if (len(sys.argv) == 1):
-		main(1600, 0.9, 0.5, 10)
-	if (len(sys.argv) != 5):
-		print("Please enter a network size, segregation level, P value, and iteration number")
+	if (len(sys.argv) < 5):
+		print("Please enter a network size, segregation level, P value, and iteration number (optional -f for facebook data)")
 		exit()
-	#run custom values
-	main(int(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]))
+	elif (len(sys.argv) == 5):
+		#run custom values
+		main(int(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]))
+	elif (sys.argv[5] == "-f"):
+		#run facebook data
+		main(4039, float(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]), sample_data=True)
+	else:
+		print("Too many arguments")
+		exit()
