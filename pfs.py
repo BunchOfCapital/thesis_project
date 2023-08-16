@@ -6,6 +6,8 @@ import random
 import sys
 import math
 
+#algorithm as specified in  https://link.springer.com/article/10.1007/s11135-019-00909-2
+
 #TODO: agent in position 0 is not swapped with the rest of low class
 #TODO: diagonal connections in lattice
 #TODO: previously expressed opinion is deprecated, remove
@@ -167,7 +169,7 @@ def gen_agents(size, segregation):
 	agents[low_border:midpoint][:] = tmp
 
 	#now apply segregation level, by placing agents in a separate class area
-	if (segregation < 1.0 and segregation > 0.0):
+	if (segregation <= 1.0 and segregation >= 0.0):
 		for i in range(sr.size):
 			if (np.random.rand() > segregation):
 				#swap this agent with another class agent
@@ -322,7 +324,7 @@ def iterate_network(network, agents, P):
 			#if an agent has falsified its opinions due to goffman heuristic, do not count it towards φ
 			if (agents[i][INT_OPINION] < 0.5):
 				if (agents[i][PROV_THRESHOLD] > agents[i][FAKER_THRESHOLD]):
-					print("WE FUCKED UP")
+					print("WE FUCKED UP (catastrophic calculation error)")
 				if (reference_opinion > agents[i][PROV_THRESHOLD] and reference_opinion < agents[i][FAKER_THRESHOLD]):
 					#if agent does not fake opinion, count is reset
 					agents[i][PREV_FAKES] = 0 
@@ -377,7 +379,7 @@ def main(size, segregation, P, iterations, sample_data=False):
 	patches = [	mpatches.Patch(facecolor=(0.2, 0.2, 0.2)), 
 				mpatches.Patch(facecolor=(0.5, 0.5, 0.5)),
 				mpatches.Patch(facecolor=(0.8, 0.8, 0.8))]
-	ax[1][0].legend(patches, ["Low Class", "Middle Class", "High Class"], loc=(0.0, -0.7))
+	ax[0][0].legend(patches, ["Low Class", "Middle Class", "High Class"])
 	ax[0][0].set_title("Social Ranks")
 	ax[0][1].set_title("Internal Opinions")
 	ax[0][2].set_title("External Opinions")

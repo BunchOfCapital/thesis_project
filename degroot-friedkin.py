@@ -3,7 +3,10 @@
 #DeGroot model is row stochastic weight matrix where each edge has a weight > 0 && < 1
 #Friedkin model introduces self-confidence
 
+#algorithm as specified in https://epubs.siam.org/doi/10.1137/130913250
+
 import numpy as np
+import sys
 
 
 def generate_network(size):
@@ -15,8 +18,6 @@ def generate_network(size):
 	#generate row-stochastic weight matrix
 	w_matrix = np.random.random((size, size))
 	w_matrix = w_matrix/w_matrix.sum(axis=1)[:,None]
-	#print("um?")
-	#print(w_matrix)
 
 	#opinions for each node are between 0 and 1
 	opinions = np.random.random(size)
@@ -139,7 +140,6 @@ def iterate_confidence(network, weights):
 		if (adjustment < 0):
 			print("Catastrophic calculation error")
 			exit()
-			break
 
 		for j in range(network.shape[1]):
 			if (i == j):
@@ -147,7 +147,6 @@ def iterate_confidence(network, weights):
 			else:
 				new_weights[i][j] = new_weights[i][j] * adjustment
 		#print("stochastic?: ", np.sum(new_weights[i]))
-	print(new_weights)
 
 	return new_weights
 
@@ -155,13 +154,28 @@ def iterate_confidence(network, weights):
 def run_dgf(network_size, num_iterations, num_issues):
 	network, weights, opinions = generate_network(network_size)
 
+	print("Initial Opinion Vector: \n", opinions)
+	print("Initial Weights Vector: \n", weights)
 	for i in range(num_issues):
+		print("Beginning Issue ", i)
+		converged = False
 		for j in range(num_iterations):
 			opinions = iterate_network(network, weights, opinions)
 			#print(opinions)
+			if (not converged and len(set(np.around(opinions, decimals=10))) == 1):
+				print("Opinion Convergence achieved on iteration ", j, " of issue ", i)
+				converged = True
+
 		weights = iterate_confidence(network, weights)
+	print("Final Opinion Vector: \n", opinions)
+	print("Final Weights Vector: \n", weights)
 
 	return network, weights, opinions
 
-_, _, opinions = run_dgf(10, 10000, 10)
-#print(opinions)
+
+if __name__ == "__main__":
+	if (len(sys.argv) != 4):
+		print("Please enter network size, number of iterations and number of issues")
+		exit()
+	else:
+		_, _, opinions = run_dgf(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]))
