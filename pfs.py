@@ -11,6 +11,7 @@ import math
 #TODO: agent in position 0 is not swapped with the rest of low class
 #TODO: diagonal connections in lattice
 #TODO: previously expressed opinion is deprecated, remove
+#TODO: make neighbourhood lookup use a dictionary
 
 # PFS model operates on a lattice divided into social ranks
 # this approach is not compatible with interaction graphs like follower graphs
@@ -251,6 +252,20 @@ def find_neighbours(network, agent, depth, neighbours):
 			neighbours.update(find_neighbours(network, i, current_depth, neighbours))
 	return list(neighbours)
 
+def find_neighbourhood(neighbourhoods, agent):
+	for neighbourhood in neighbourhoods:
+		if agent in neighbourhood:
+			return neighbourhood
+	return []
+
+def create_neighbourhood(neighbours, neighbourhoods):
+	neighbourhood = []
+	for agent in neighbours:
+		if (len(find_neighbourhood(neighbourhoods, agent)) == 0):
+			neighbourhood.append(agent)
+	return neighbourhood
+
+
 def get_general_opinion(agents):
 	total_sum = agents[:,EXT_OPINION].sum()
 	return total_sum/agents.shape[0]
@@ -265,7 +280,9 @@ def iterate_network(network, agents, P):
 	noise = np.random.normal(loc=0.5, scale=0.05, size=agents.shape[0])
 	percieved_opinions = general_opinion + noise - 0.5
 	percieved_opinions = np.clip(percieved_opinions, 0.0, 1.0)
-	#print(percieved_opinions)
+
+	#create a list of neighbourhoods that will be added to later
+	neighbourhoods = []
 
 	#iterate over all agents, updating in random order
 	agent_list = np.arange(agents.shape[0])
@@ -285,7 +302,13 @@ def iterate_network(network, agents, P):
 
 		#second apply Goffman Heuristic to each node ("impression management")
 		#we need highest rank agent in the neighbourhood (within 3 steps)
-		neighbours = find_neighbours(network, i, 0, [])
+		neighbours = find_neighbourhood(neighbourhoods, i)
+		if (len(neighbours) == 0):
+			neighbours = find_neighbours(network, i, 0, [])
+			#make sure there's no overlap in neighbourhoods
+			neighbourhoods.append(create_neighbourhood(neighbours, neighbourhoods))
+
+
 		#sort by social rank
 		influences = sorted(list(neighbours), key=lambda agent: agents[agent][SR], reverse=True)
 		#see equation 3 (p. 397)
@@ -300,7 +323,7 @@ def iterate_network(network, agents, P):
 					agents[i][PROV_THRESHOLD] = agents[i][INT_OPINION] - goffman_influence
 
 		#expected opinion of the agent is based on their neighbours
-		if (len(neighbours) == 0):
+		if (len(neighbours) != 0):
 			expected_opinion = 0
 			for j in range(len(neighbours)):
 				if (agents[neighbours[j]][EXT_OPINION] == 1):
@@ -321,13 +344,14 @@ def iterate_network(network, agents, P):
 		#the agent will now express an opinion
 		if (reference_opinion >= agents[i][PROV_THRESHOLD]):
 			agents[i][EXT_OPINION] = 1
-			#if an agent has falsified its opinions due to goffman heuristic, do not count it towards φ
+			
 			if (agents[i][INT_OPINION] < 0.5):
 				if (agents[i][PROV_THRESHOLD] > agents[i][FAKER_THRESHOLD]):
 					print("WE FUCKED UP (catastrophic calculation error)")
+					exit()
+				#if an agent has falsified its opinions due to goffman heuristic, do not count it towards φ
 				if (reference_opinion > agents[i][PROV_THRESHOLD] and reference_opinion < agents[i][FAKER_THRESHOLD]):
-					#if agent does not fake opinion, count is reset
-					agents[i][PREV_FAKES] = 0 
+					agents[i][PREV_FAKES] += 0 
 				else:
 					#otherwise it increases doubt
 					agents[i][PREV_FAKES] += 1
@@ -335,7 +359,11 @@ def iterate_network(network, agents, P):
 			agents[i][EXT_OPINION] = 0
 
 			if (agents[i][INT_OPINION] >= 0.5):
-				agents[i][PREV_FAKES] += 1
+				#high opinion (but low rank) agents can also trigger goughmans heuristic to protect themselves
+				if(reference_opinion < agents[i][PROV_THRESHOLD] and reference_opinion > agents[i][FAKER_THRESHOLD]):
+					agents[i][PREV_FAKES] += 0
+				else:
+					agents[i][PREV_FAKES] += 1
 			else:
 				agents[i][PREV_FAKES] = 0
 
