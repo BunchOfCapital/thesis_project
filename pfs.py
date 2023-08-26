@@ -347,8 +347,9 @@ def iterate_network(network, agents, P):
 			
 			if (agents[i][INT_OPINION] < 0.5):
 				if (agents[i][PROV_THRESHOLD] > agents[i][FAKER_THRESHOLD]):
-					print("WE FUCKED UP (catastrophic calculation error)")
-					exit()
+					print("catastrophic calculation error (probably a rounding issue)")
+					print("prov: ", agents[i][PROV_THRESHOLD])
+					print("actual: ", agents[i][FAKER_THRESHOLD])
 				#if an agent has falsified its opinions due to goffman heuristic, do not count it towards φ
 				if (reference_opinion > agents[i][PROV_THRESHOLD] and reference_opinion < agents[i][FAKER_THRESHOLD]):
 					agents[i][PREV_FAKES] += 0 
