@@ -1,9 +1,11 @@
 #Written by Joel Wildman (22984156)
 
+
+#algorithm as specified in https://epubs.siam.org/doi/10.1137/130913250
+
 #DeGroot model is row stochastic weight matrix where each edge has a weight > 0 && < 1
 #Friedkin model introduces self-confidence
 
-#algorithm as specified in https://epubs.siam.org/doi/10.1137/130913250
 
 import numpy as np
 import sys
