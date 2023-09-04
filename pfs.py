@@ -9,9 +9,13 @@ import math
 #algorithm as specified in  https://link.springer.com/article/10.1007/s11135-019-00909-2
 
 #TODO: agent in position 0 is not swapped with the rest of low class
-#TODO: diagonal connections in lattice
 #TODO: previously expressed opinion is deprecated, remove
 #TODO: make neighbourhood lookup use a dictionary
+
+#TODO: Stats mode
+#		Average number of neighbours
+#		Fakes/goffman activations each turn
+#		Average opinion graphs etc
 
 # PFS model operates on a lattice divided into social ranks
 # this approach is not compatible with interaction graphs like follower graphs
@@ -242,7 +246,7 @@ def get_pictures(all_agents):
 
 
 def find_neighbours(network, agent, depth, neighbours):
-	if depth >= 3:
+	if depth >= 4:
 		return []
 	current_depth = depth + 1
 	neighbours = set([])
@@ -272,7 +276,13 @@ def get_general_opinion(agents):
 
 
 
-def iterate_network(network, agents, P):
+def iterate_network(network, agents, P, stats_mode=False, stats_buffer={}):
+
+	if (stats_mode):
+		faked_supports_g = 0
+		faked_supports_no_g= 0
+		opinion_changes = 0
+
 
 	#take the general opinion from the previous round for use later
 	general_opinion = get_general_opinion(agents)
@@ -284,6 +294,8 @@ def iterate_network(network, agents, P):
 	#create a list of neighbourhoods that will be added to later
 	neighbourhoods = []
 
+	reference_opinions = 0
+
 	#iterate over all agents, updating in random order
 	agent_list = np.arange(agents.shape[0])
 	random.shuffle(agent_list)
@@ -294,6 +306,8 @@ def iterate_network(network, agents, P):
 			agents[i][INT_OPINION] = (agents[i][EXT_OPINION] + agents[i][INT_OPINION])/2
 			agents[i][FAKER_THRESHOLD] = 1 - agents[i][INT_OPINION]
 			agents[i][PREV_FAKES] = 0
+			if (stats_mode):
+				opinion_changes += 1
 		else:
 			#no change
 			agents[i][INT_OPINION] = agents[i][INT_OPINION]
@@ -301,7 +315,7 @@ def iterate_network(network, agents, P):
 
 
 		#second apply Goffman Heuristic to each node ("impression management")
-		#we need highest rank agent in the neighbourhood (within 3 steps)
+		#we need highest rank agent in the neighbourhood (within n steps)
 		neighbours = find_neighbourhood(neighbourhoods, i)
 		if (len(neighbours) == 0):
 			neighbours = find_neighbours(network, i, 0, [])
@@ -340,6 +354,7 @@ def iterate_network(network, agents, P):
 		#calculate final reference opinion for this agent, using variable P which scales influence of global & local opinions
 		#higher P means agents are influenced more by the global opinion and less by their neighbours
 		reference_opinion = (P * percieved_opinions[i]) + ((1 - P) * expected_opinion)
+		reference_opinions += reference_opinion
 
 		#the agent will now express an opinion
 		if (reference_opinion >= agents[i][PROV_THRESHOLD]):
@@ -348,23 +363,36 @@ def iterate_network(network, agents, P):
 			if (agents[i][INT_OPINION] < 0.5):
 				if (agents[i][PROV_THRESHOLD] > agents[i][FAKER_THRESHOLD]):
 					print("catastrophic calculation error (probably a rounding issue)")
-					print("prov: ", agents[i][PROV_THRESHOLD])
+					print("provisional: ", agents[i][PROV_THRESHOLD])
 					print("actual: ", agents[i][FAKER_THRESHOLD])
 				#if an agent has falsified its opinions due to goffman heuristic, do not count it towards φ
 				if (reference_opinion > agents[i][PROV_THRESHOLD] and reference_opinion < agents[i][FAKER_THRESHOLD]):
-					agents[i][PREV_FAKES] += 0 
+					agents[i][PREV_FAKES] += 0
+					if (stats_mode):
+						faked_supports_g += 1 
 				else:
 					#otherwise it increases doubt
 					agents[i][PREV_FAKES] += 1
+					if (stats_mode):
+						faked_supports_no_g += 1
+
+			#if no falsification occurred, reset counter
+			else:
+				agents[i][PREV_FAKES] = 0
 		else:
 			agents[i][EXT_OPINION] = 0
 
 			if (agents[i][INT_OPINION] >= 0.5):
-				#high opinion (but low rank) agents can also trigger goughmans heuristic to protect themselves
+				#high opinion (but low rank) agents can also trigger goffmans heuristic to protect themselves
 				if(reference_opinion < agents[i][PROV_THRESHOLD] and reference_opinion > agents[i][FAKER_THRESHOLD]):
 					agents[i][PREV_FAKES] += 0
+					if (stats_mode):
+						faked_supports_g += 1
+
 				else:
 					agents[i][PREV_FAKES] += 1
+					if (stats_mode):
+						faked_supports_no_g += 1
 			else:
 				agents[i][PREV_FAKES] = 0
 
@@ -372,14 +400,30 @@ def iterate_network(network, agents, P):
 		#provisional threshold is reset if it has been used this round
 		if (agents[i][PROV_THRESHOLD] != agents[i][FAKER_THRESHOLD]):
 			agents[i][PROV_THRESHOLD] = agents[i][FAKER_THRESHOLD]
+
+	if (stats_mode):
+		#calculate average neighbourhood size and save to buffer
+		neighbourhood_sizes = sum(len(hood) for hood in neighbourhoods)
+		avg_size = neighbourhood_sizes/len(neighbourhoods)
+		stats_buffer["hood_sizes"].append(avg_size)
+
+		#add opinion change and faked opinion stats to buffer
+		stats_buffer["opinion_changes"].append(opinion_changes)
+		stats_buffer["faked_supports_g"].append(faked_supports_g)
+		stats_buffer["faked_supports_no_g"].append(faked_supports_no_g)
+
+	print("average global reference opinion is ", reference_opinions/agents.shape[0])
+
 	return agents
 
 
-def main(size, segregation, P, iterations, sample_data=False):
+def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
+
+	#GENERATE NECESSARY DATA
 	print("Generating network...")
 	if (sample_data):
 		#facebook dataset contains 4039 nodes
-		network = gen_facebook_net(size)
+		network = gen_facebook_net(4039)
 		print(network.shape)
 	else:
 		network = gen_lattice(size)
@@ -394,7 +438,19 @@ def main(size, segregation, P, iterations, sample_data=False):
 	ranks, internal, external = get_pictures(agents)
 	fig1, ax = plt.subplots(nrows=2, ncols=3)
 
-	#main heatmaps
+	if (stats_mode):
+		print("Running in stats mode")
+		stats_buffer = {"hood_sizes":[],
+						"faked_supports_g":[], 
+						"faked_supports_no_g":[], 
+						"avg_int_opinion":[],
+						"avg_ext_opinion":[], 
+						"median_int_opinion":[], 
+						"opinion_changes":[]
+						}
+	else:
+		stats_buffer={}
+	#INITIALIZE GRAPHS
 	#colour map doesn't work for some reason
 	im1 = ax[0][0].imshow(ranks, cmap='seismic', interpolation='nearest', vmin=0, vmax=1)
 	im2 = ax[0][1].imshow(internal, cmap='seismic', interpolation='nearest', vmin=0, vmax=1)
@@ -413,8 +469,11 @@ def main(size, segregation, P, iterations, sample_data=False):
 	ax[0][1].set_title("Internal Opinions")
 	ax[0][2].set_title("External Opinions")
 	iterlabel = plt.text(0.0, 20.0, "Iteration 0")
+	fig1.tight_layout()
 	plt.show()
 
+
+	#EXECUTE SIMULATION
 	for i in range(iterations):
 		print("Running iteration ", i+1, "...")
 
@@ -428,11 +487,17 @@ def main(size, segregation, P, iterations, sample_data=False):
 		fig1.canvas.draw()
 		fig1.canvas.flush_events()
 
-		agents = iterate_network(network, agents, P)
+		agents = iterate_network(network, agents, P, stats_mode, stats_buffer)
 
 		external_average = get_general_opinion(agents)
 		internal_average = agents[:,INT_OPINION].sum()/agents.shape[0]
 		print("Internal avg: ", internal_average, " External avg: ", external_average)
+
+		if (stats_mode):
+			stats_buffer["avg_int_opinion"].append(internal_average)
+			stats_buffer["avg_ext_opinion"].append(external_average)
+			median_agent = np.argsort(agents[:,INT_OPINION])[int(agents.shape[0]/2)]
+			stats_buffer["median_int_opinion"].append(agents[:,INT_OPINION][median_agent])
 
 	fig2, ax2 = plt.subplots(nrows=1, ncols=2)
 	ax2[0].set_title("Internal Opinions")
@@ -441,19 +506,45 @@ def main(size, segregation, P, iterations, sample_data=False):
 	final_expressions = ax2[1].hist(agents[:,EXT_OPINION], bins=2, range=(0.0,1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
 	plt.show()
 
+	#PLOT STATISTICS
+	if (stats_mode):
+		fig3, ax3 = plt.subplots(nrows=3, ncols=2)
+		ax3[0][0].set_title("Faked Supports")
+		ax3[0][1].set_title("Average Neighbourhood Size")
+		ax3[1][0].set_title("Average Internal Opinion")
+		ax3[1][1].set_title("Average External Opinion")
+		ax3[2][0].set_title("Median Internal Opinion")
+		ax3[2][1].set_title("Number of Opinion Changes")
+
+		ax3[0][0].bar(np.arange(iterations) - 0.2, stats_buffer["faked_supports_g"],label="Goffman Fakes", width=0.4)
+		ax3[0][0].bar(np.arange(iterations) + 0.2, stats_buffer["faked_supports_no_g"],label="Other Fakes", width=0.4)
+		ax3[0][1].bar(np.arange(iterations), stats_buffer["hood_sizes"])
+		ax3[1][0].bar(np.arange(iterations), stats_buffer["avg_int_opinion"])
+		ax3[1][0].set_yticks(np.linspace(0.0, 1.0, num=9))
+		ax3[1][1].bar(np.arange(iterations), stats_buffer["avg_ext_opinion"])
+		ax3[1][1].set_yticks(np.linspace(0.0, 1.0, num=9))
+		ax3[2][0].bar(np.arange(iterations), stats_buffer["median_int_opinion"])
+		ax3[2][0].set_yticks(np.linspace(0.0, 1.0, num=9))
+		ax3[2][1].bar(np.arange(iterations), stats_buffer["opinion_changes"])
+
+		fig3.tight_layout()
+		plt.show()
+
+
 	input()
 	return
 
 if __name__ == "__main__":
 	if (len(sys.argv) < 5):
-		print("Please enter a network size, segregation level, P value, and iteration number (optional -f for facebook data)")
+		print("Please enter a network size, segregation level, P value, and iteration number (optional -f for facebook data, -s for stats mode)")
 		exit()
 	elif (len(sys.argv) == 5):
 		#run custom values
 		main(int(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]))
-	elif (sys.argv[5] == "-f"):
-		#run facebook data
-		main(4039, float(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]), sample_data=True)
+		exit()
+	elif ("-f" in sys.argv or "-s" in sys.argv):
+		#run with options
+		main(int(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]), sample_data=("-f" in sys.argv), stats_mode=("-s" in sys.argv))
 	else:
 		print("Too many arguments")
 		exit()
