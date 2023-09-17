@@ -317,6 +317,8 @@ def iterate_network(network, agents, P, stats_mode=False, stats_buffer={}):
 	#create a list of neighbourhoods that will be added to later
 	neighbourhoods = []
 
+	#neighbourhoods = gen_square_neighbourhoods()
+
 	reference_opinions = 0
 
 	#iterate over all agents, updating in random order
@@ -479,9 +481,6 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 		stats_buffer={}
 
 	#INITIALIZE GRAPHS
-	#colour map doesn't work for some reason
-	
-	
 	im1 = ax[0][0].imshow(ranks, cmap='magma', interpolation='nearest', vmin=0, vmax=1)
 	im2 = ax[0][1].imshow(internal, cmap='magma', interpolation='nearest', vmin=0, vmax=1)
 	im3 = ax[0][2].imshow(external, cmap='hot', interpolation='nearest', vmin=0, vmax=1)
@@ -551,7 +550,7 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 
 		ax3[0][0].bar(np.arange(iterations) - 0.2, stats_buffer["faked_supports_g"],label="Goffman Fakes", width=0.4)
 		ax3[0][0].bar(np.arange(iterations) + 0.2, stats_buffer["faked_supports_no_g"],label="Other Fakes", width=0.4)
-		ax3[0][1].bar(np.arange(iterations), stats_buffer["num_hoods"])
+		ax3[0][1].bar(np.arange(iterations), stats_buffer["hood_sizes"])
 		ax3[1][0].plot(stats_buffer["avg_int_opinion"])
 		ax3[1][0].set_yticks(np.linspace(0.0, 1.0, num=9))
 		ax3[1][1].plot( stats_buffer["avg_ext_opinion"])
