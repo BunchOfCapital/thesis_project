@@ -536,6 +536,18 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 
 	#PLOT STATISTICS
 	if (stats_mode):
+		#save stats to file
+		int_hist = np.histogram(agents[:,INT_OPINION], bins=50)
+		file = open("data/pfs_p" + str(P) + "_s" + str(segregation) + "_i" + str(iterations), "a")
+		file.write("Average internal opinions: \n" + str(stats_buffer["avg_int_opinion"]) + "\n")
+		file.write("Average external opinions: \n" + str(stats_buffer["avg_ext_opinion"]) + "\n")
+		file.write("Faked supports due to Goffman: \n" + str(stats_buffer["faked_supports_g"]) + "\n")
+		file.write("Faked supports not due to Goffman: \n" + str(stats_buffer["faked_supports_no_g"]) + "\n")
+		file.write("Opinion changes each round: \n" + str(stats_buffer["opinion_changes"]) + "\n")
+		file.write("Final internal opinion distribution: \n" + str(int_hist[0]) + "\n" + str(int_hist[1]) + "\n\n")
+		file.close()
+
+
 		fig3, ax3 = plt.subplots(nrows=3, ncols=2)
 		ax3[0][0].set_title("Faked Supports")
 		ax3[0][1].set_title("Average Neighbourhood Size")
@@ -560,6 +572,7 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 		ax3[2][1].plot(stats_buffer["opinion_changes"])
 
 		fig3.tight_layout()
+		#fig3.savefig("data/pfs_p" + str(P) + "_s" + str(segregation) + "_i" + str(iterations) + ".png")
 		plt.show()
 
 	print("Average Neighbourhood Sizes:")
