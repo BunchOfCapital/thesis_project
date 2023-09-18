@@ -547,6 +547,15 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 		file.write("Final internal opinion distribution: \n" + str(int_hist[0]) + "\n" + str(int_hist[1]) + "\n\n")
 		file.close()
 
+		file2 = open("heatmap", 'a')
+		if (P == 1.0):
+			entry = str(stats_buffer["avg_int_opinion"][-1]) + "\n"
+		else:
+			entry = str(stats_buffer["avg_int_opinion"][-1]) + ","
+
+		file2.write(entry)
+		file2.close()
+
 
 		fig3, ax3 = plt.subplots(nrows=3, ncols=2)
 		ax3[0][0].set_title("Faked Supports")

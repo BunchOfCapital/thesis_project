@@ -1,0 +1,14 @@
+from matplotlib import pyplot as plt
+
+file = open("heatmap", "r")
+
+contents = file.readlines()
+for i in range(len(contents)):
+	contents[i] = contents[i].split(",")
+
+for i in range(len(contents)):
+	for j in range(len(contents[i])):
+		contents[i][j] = float(contents[i][j])
+print(contents)
+plt.imshow(contents, cmap='Greys', interpolation='nearest', vmin=0, vmax=1)
+plt.show()
