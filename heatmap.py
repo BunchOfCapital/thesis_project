@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 
-file = open("heatmap", "r")
+file = open("int_op_lattice_heatmap", "r")
 
 contents = file.readlines()
 for i in range(len(contents)):
