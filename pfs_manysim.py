@@ -66,12 +66,8 @@ def gen_lattice(size):
 
 def parse_file(filename,):
 	values = np.loadtxt(filename, dtype=int)
-	new_values = []
-	for i in range(values.shape[0]):
-		if (np.random.rand() < 0.65 ):
-			new_values.append(values[i])
-	
-	return np.array(new_values)
+	print(values.shape)
+	return values
 
 #this dataset has 4039 nodes
 def gen_facebook_net(size):
@@ -287,7 +283,7 @@ def create_neighbourhood(neighbours, neighbourhoods):
 #NOTE THAT THIS CALCULATES AVERAGE *INTERNAL* OPINION
 #this contradicts the paper, but matches the findings, likely this is also present in the original code
 def get_general_opinion(agents):
-	total_sum = agents[:,EXT_OPINION].sum()
+	total_sum = agents[:,INT_OPINION].sum()
 	return total_sum/agents.shape[0]
 
 def gen_square_neighbourhoods():
@@ -466,9 +462,9 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 	else:
 		agents = gen_agents(size, segregation)
 
-	plt.ion()
-	ranks, internal, external = get_pictures(agents)
-	fig1, ax = plt.subplots(nrows=2, ncols=3)
+	# plt.ion()
+	# ranks, internal, external = get_pictures(agents)
+	# fig1, ax = plt.subplots(nrows=2, ncols=3)
 
 	if (stats_mode):
 		print("Running in stats mode")
@@ -485,25 +481,25 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 		stats_buffer={}
 
 	#INITIALIZE GRAPHS
-	im1 = ax[0][0].imshow(ranks, cmap='magma', interpolation='nearest', vmin=0, vmax=1)
-	im2 = ax[0][1].imshow(internal, cmap='magma', interpolation='nearest', vmin=0, vmax=1)
-	im3 = ax[0][2].imshow(external, cmap='hot', interpolation='nearest', vmin=0, vmax=1)
+	# im1 = ax[0][0].imshow(ranks, cmap='magma', interpolation='nearest', vmin=0, vmax=1)
+	# im2 = ax[0][1].imshow(internal, cmap='magma', interpolation='nearest', vmin=0, vmax=1)
+	# im3 = ax[0][2].imshow(external, cmap='hot', interpolation='nearest', vmin=0, vmax=1)
 
-	#histograms
-	im4 = ax[1][0].hist(agents[:,SR], bins=50, range=(0.0, 1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
-	im5 = ax[1][1].hist(agents[:,INT_OPINION], bins=50, range=(0.0, 1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
-	im6 = ax[1][2].hist(agents[:,EXT_OPINION], bins=2, range=(0.0,1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
+	# #histograms
+	# im4 = ax[1][0].hist(agents[:,SR], bins=50, range=(0.0, 1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
+	# im5 = ax[1][1].hist(agents[:,INT_OPINION], bins=50, range=(0.0, 1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
+	# im6 = ax[1][2].hist(agents[:,EXT_OPINION], bins=2, range=(0.0,1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
 
-	patches = [	mpatches.Patch(facecolor=(0.2, 0.2, 0.2)), 
-				mpatches.Patch(facecolor=(0.5, 0.5, 0.5)),
-				mpatches.Patch(facecolor=(0.8, 0.8, 0.8))]
-	ax[0][0].legend(patches, ["Low Class", "Middle Class", "High Class"])
-	ax[0][0].set_title("Social Ranks")
-	ax[0][1].set_title("Internal Opinions")
-	ax[0][2].set_title("External Opinions")
-	iterlabel = plt.text(0.0, 20.0, "Iteration 0")
-	fig1.tight_layout()
-	plt.show()
+	# patches = [	mpatches.Patch(facecolor=(0.2, 0.2, 0.2)), 
+	# 			mpatches.Patch(facecolor=(0.5, 0.5, 0.5)),
+	# 			mpatches.Patch(facecolor=(0.8, 0.8, 0.8))]
+	# ax[0][0].legend(patches, ["Low Class", "Middle Class", "High Class"])
+	# ax[0][0].set_title("Social Ranks")
+	# ax[0][1].set_title("Internal Opinions")
+	# ax[0][2].set_title("External Opinions")
+	# iterlabel = plt.text(0.0, 20.0, "Iteration 0")
+	# fig1.tight_layout()
+	# plt.show()
 
 
 	#EXECUTE SIMULATION
@@ -511,13 +507,13 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 		print("Running iteration ", i+1, "...")
 
 		#update charts
-		ranks, internal, external = get_pictures(agents)
-		iterlabel.set_text("Iteration " + str(i+1))
-		im1.set_data(ranks)
-		im2.set_data(internal)
-		im3.set_data(external)
-		fig1.canvas.draw()
-		fig1.canvas.flush_events()
+		# ranks, internal, external = get_pictures(agents)
+		# iterlabel.set_text("Iteration " + str(i+1))
+		# im1.set_data(ranks)
+		# im2.set_data(internal)
+		# im3.set_data(external)
+		# fig1.canvas.draw()
+		# fig1.canvas.flush_events()
 
 		agents = iterate_network(network, agents, P, stats_mode, stats_buffer)
 
@@ -531,12 +527,12 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 			median_agent = np.argsort(agents[:,INT_OPINION])[int(agents.shape[0]/2)]
 			stats_buffer["median_int_opinion"].append(agents[:,INT_OPINION][median_agent])
 
-	fig2, ax2 = plt.subplots(nrows=1, ncols=2)
-	ax2[0].set_title("Internal Opinions")
-	ax2[1].set_title("External/Expressed Opinions")
-	final_opinions = ax2[0].hist(agents[:,INT_OPINION], bins=50, range=(0.0, 1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
-	final_expressions = ax2[1].hist(agents[:,EXT_OPINION], bins=2, range=(0.0,1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
-	plt.show()
+	# fig2, ax2 = plt.subplots(nrows=1, ncols=2)
+	# ax2[0].set_title("Internal Opinions")
+	# ax2[1].set_title("External/Expressed Opinions")
+	# final_opinions = ax2[0].hist(agents[:,INT_OPINION], bins=50, range=(0.0, 1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
+	# final_expressions = ax2[1].hist(agents[:,EXT_OPINION], bins=2, range=(0.0,1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
+	# plt.show()
 
 	#PLOT STATISTICS
 	if (stats_mode):
@@ -561,37 +557,37 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 		file2.close()
 
 
-		fig3, ax3 = plt.subplots(nrows=3, ncols=2)
-		ax3[0][0].set_title("Faked Supports")
-		ax3[0][1].set_title("Average Neighbourhood Size")
-		ax3[1][0].set_title("Average Internal Opinion")
-		ax3[1][1].set_title("Average External Opinion")
-		ax3[2][0].set_title("Median Internal Opinion")
-		ax3[2][1].set_title("Number of Opinion Changes")
+		# fig3, ax3 = plt.subplots(nrows=3, ncols=2)
+		# ax3[0][0].set_title("Faked Supports")
+		# ax3[0][1].set_title("Average Neighbourhood Size")
+		# ax3[1][0].set_title("Average Internal Opinion")
+		# ax3[1][1].set_title("Average External Opinion")
+		# ax3[2][0].set_title("Median Internal Opinion")
+		# ax3[2][1].set_title("Number of Opinion Changes")
 
-		patches = [	mpatches.Patch(facecolor="blue"), 
-					mpatches.Patch(facecolor="orange")]
-		ax3[0][0].legend(patches, ["Goffman Fakes", "Valid Fakes"])
+		# patches = [	mpatches.Patch(facecolor="blue"), 
+		# 			mpatches.Patch(facecolor="orange")]
+		# ax3[0][0].legend(patches, ["Goffman Fakes", "Valid Fakes"])
 
-		ax3[0][0].bar(np.arange(iterations) - 0.2, stats_buffer["faked_supports_g"],label="Goffman Fakes", width=0.4)
-		ax3[0][0].bar(np.arange(iterations) + 0.2, stats_buffer["faked_supports_no_g"],label="Other Fakes", width=0.4)
-		ax3[0][1].bar(np.arange(iterations), stats_buffer["hood_sizes"])
-		ax3[1][0].plot(stats_buffer["avg_int_opinion"])
-		ax3[1][0].set_yticks(np.linspace(0.0, 1.0, num=9))
-		ax3[1][1].plot( stats_buffer["avg_ext_opinion"])
-		ax3[1][1].set_yticks(np.linspace(0.0, 1.0, num=9))
-		ax3[2][0].plot(stats_buffer["median_int_opinion"])
-		ax3[2][0].set_yticks(np.linspace(0.0, 1.0, num=9))
-		ax3[2][1].plot(stats_buffer["opinion_changes"])
+		# ax3[0][0].bar(np.arange(iterations) - 0.2, stats_buffer["faked_supports_g"],label="Goffman Fakes", width=0.4)
+		# ax3[0][0].bar(np.arange(iterations) + 0.2, stats_buffer["faked_supports_no_g"],label="Other Fakes", width=0.4)
+		# ax3[0][1].bar(np.arange(iterations), stats_buffer["hood_sizes"])
+		# ax3[1][0].plot(stats_buffer["avg_int_opinion"])
+		# ax3[1][0].set_yticks(np.linspace(0.0, 1.0, num=9))
+		# ax3[1][1].plot( stats_buffer["avg_ext_opinion"])
+		# ax3[1][1].set_yticks(np.linspace(0.0, 1.0, num=9))
+		# ax3[2][0].plot(stats_buffer["median_int_opinion"])
+		# ax3[2][0].set_yticks(np.linspace(0.0, 1.0, num=9))
+		# ax3[2][1].plot(stats_buffer["opinion_changes"])
 
-		fig3.tight_layout()
-		#fig3.savefig("data/pfs_p" + str(P) + "_s" + str(segregation) + "_i" + str(iterations) + ".png")
-		plt.show()
+		# fig3.tight_layout()
+		# #fig3.savefig("data/pfs_p" + str(P) + "_s" + str(segregation) + "_i" + str(iterations) + ".png")
+		# plt.show()
 
 	print("Average Neighbourhood Sizes:")
 	print(stats_buffer["hood_sizes"])
 
-	input()
+	#input()
 	return
 
 if __name__ == "__main__":
@@ -604,7 +600,10 @@ if __name__ == "__main__":
 		exit()
 	elif ("-f" in sys.argv or "-s" in sys.argv):
 		#run with options
-		main(int(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]), sample_data=("-f" in sys.argv), stats_mode=("-s" in sys.argv))
+		for i in range(11):
+			for j in range(11):
+				main(1600, 0.1*i, 0.1*j, 60, sample_data=False, stats_mode=True)
+		#main(int(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]), sample_data=("-f" in sys.argv), stats_mode=("-s" in sys.argv))
 	else:
 		print("Too many arguments")
 		exit()

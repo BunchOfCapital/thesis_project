@@ -1,6 +1,9 @@
 from matplotlib import pyplot as plt
+import numpy as np
+import sys
 
-file = open("int_op_lattice_heatmap", "r")
+filename = sys.argv[1]
+file = open(filename, "r")
 
 contents = file.readlines()
 for i in range(len(contents)):
@@ -11,5 +14,14 @@ for i in range(len(contents)):
 		contents[i][j] = float(contents[i][j])
 print(contents)
 #contents.reverse()
-plt.imshow(contents, cmap='Greys', interpolation='nearest', vmin=0.4, vmax=0.7, origin="lower")
+
+fig, ax = plt.subplots()
+
+heatmap = plt.pcolor(contents, cmap='Greys')
+plt.colorbar(heatmap)
+plt.title("Average Internal Opinion after 30 Iterations (Facebook Network) ")
+ax.set_yticks(np.round(np.linspace(0, 10, num=11), 1), labels=np.round(np.linspace(0.0, 1.0, num=11), 1))
+ax.set_xticks(np.round(np.linspace(0, 10, num=11), 1), labels=np.round(np.linspace(0.0, 1.0, num=11), 1))
+plt.xlabel("P")
+plt.ylabel("S")
 plt.show()

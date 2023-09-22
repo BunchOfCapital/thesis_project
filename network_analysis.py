@@ -8,7 +8,14 @@ import math
 
 
 def main(file_name, num_nodes):
-	data = np.loadtxt(file_name, dtype=float)
+	input_data = np.loadtxt(file_name, dtype=int)
+
+	new_values = []
+	for i in range(input_data.shape[0]):
+		if (np.random.rand() < 0.7 ):
+			new_values.append(input_data[i])
+	
+	data =  np.array(new_values)
 	
 	degrees = np.zeros(num_nodes)
 	for edge in data:
