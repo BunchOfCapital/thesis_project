@@ -21,6 +21,7 @@ import math
 # threshold for internalising k(i) = 3, number of previous falsifications φ, and previously expressed opinion z*(i)
 
 internalising_threshold = 3
+edge_chance = 0
 
 SR = 0
 INT_OPINION = 1
@@ -66,8 +67,12 @@ def gen_lattice(size):
 
 def parse_file(filename,):
 	values = np.loadtxt(filename, dtype=int)
-	print(values.shape)
-	return values
+	new_values = []
+	for i in range(values.shape[0]):
+		if (np.random.rand() < edge_chance ):
+			new_values.append(values[i])
+	
+	return np.array(new_values)
 
 #this dataset has 4039 nodes
 def gen_facebook_net(size):
@@ -256,7 +261,7 @@ def get_pictures(all_agents):
 
 
 def find_neighbours(network, agent, depth, neighbours):
-	if depth >= 4:
+	if depth >= 3:
 		return []
 	current_depth = depth + 1
 	neighbours = set([])
@@ -317,7 +322,7 @@ def iterate_network(network, agents, P, stats_mode=False, stats_buffer={}):
 	#create a list of neighbourhoods that will be added to later
 	neighbourhoods = []
 
-	neighbourhoods = gen_square_neighbourhoods()
+	#neighbourhoods = gen_square_neighbourhoods()
 
 	reference_opinions = 0
 
@@ -547,7 +552,7 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 		# file.write("Final internal opinion distribution: \n" + str(int_hist[0]) + "\n" + str(int_hist[1]) + "\n\n")
 		# file.close()
 
-		file2 = open("int_op_lattice_heatmap_60i", 'a')
+		file2 = open("int_op_gb_heatmap_"+ str(edge_chance), 'a')
 		if (P == 1.0):
 			entry = str(stats_buffer["avg_int_opinion"][-1]) + "\n"
 		else:
@@ -600,9 +605,12 @@ if __name__ == "__main__":
 		exit()
 	elif ("-f" in sys.argv or "-s" in sys.argv):
 		#run with options
-		for i in range(11):
-			for j in range(11):
-				main(1600, 0.1*i, 0.1*j, 60, sample_data=False, stats_mode=True)
+		for chance in [0.7, 0.5, 0.3]:
+			edge_chance = chance
+			print("Running with chance ", edge_chance)
+			for i in range(11):
+				for j in range(11):
+					main(1600, 0.1*i, 0.1*j, 30, sample_data=True, stats_mode=True)
 		#main(int(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]), sample_data=("-f" in sys.argv), stats_mode=("-s" in sys.argv))
 	else:
 		print("Too many arguments")
