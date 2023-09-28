@@ -552,7 +552,7 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 		# file.write("Final internal opinion distribution: \n" + str(int_hist[0]) + "\n" + str(int_hist[1]) + "\n\n")
 		# file.close()
 
-		file2 = open("int_op_gb_heatmap_"+ str(edge_chance), 'a')
+		file2 = open("int_op_fb_heatmap_"+ str(edge_chance) + "_2", 'a')
 		if (P == 1.0):
 			entry = str(stats_buffer["avg_int_opinion"][-1]) + "\n"
 		else:
@@ -605,7 +605,7 @@ if __name__ == "__main__":
 		exit()
 	elif ("-f" in sys.argv or "-s" in sys.argv):
 		#run with options
-		for chance in [0.7, 0.5, 0.3]:
+		for chance in [0.3, 0.5, 0.7]:
 			edge_chance = chance
 			print("Running with chance ", edge_chance)
 			for i in range(11):
