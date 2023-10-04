@@ -21,7 +21,7 @@ import math
 # threshold for internalising k(i) = 3, number of previous falsifications φ, and previously expressed opinion z*(i)
 
 internalising_threshold = 3
-edge_chance = 0
+generation = 0
 
 SR = 0
 INT_OPINION = 1
@@ -322,7 +322,7 @@ def iterate_network(network, agents, P, stats_mode=False, stats_buffer={}):
 	#create a list of neighbourhoods that will be added to later
 	neighbourhoods = []
 
-	#neighbourhoods = gen_square_neighbourhoods()
+	neighbourhoods = gen_square_neighbourhoods()
 
 	reference_opinions = 0
 
@@ -552,7 +552,7 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 		# file.write("Final internal opinion distribution: \n" + str(int_hist[0]) + "\n" + str(int_hist[1]) + "\n\n")
 		# file.close()
 
-		file2 = open("int_op_fb_heatmap_"+ str(edge_chance) + "_2", 'a')
+		file2 = open("int_op_og_heatmap_"+ str(generation), 'a')
 		if (P == 1.0):
 			entry = str(stats_buffer["avg_int_opinion"][-1]) + "\n"
 		else:
@@ -605,12 +605,14 @@ if __name__ == "__main__":
 		exit()
 	elif ("-f" in sys.argv or "-s" in sys.argv):
 		#run with options
-		for chance in [0.3, 0.5, 0.7]:
-			edge_chance = chance
-			print("Running with chance ", edge_chance)
+		# for chance in [0.3, 0.5, 0.7]:
+		# 	edge_chance = chance
+		# 	print("Running with chance ", edge_chance)
+		for p in range(10):
+			generation = p
 			for i in range(11):
 				for j in range(11):
-					main(1600, 0.1*i, 0.1*j, 30, sample_data=True, stats_mode=True)
+					main(1600, 0.1*i, 0.1*j, 30, sample_data=False, stats_mode=True)
 		#main(int(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]), sample_data=("-f" in sys.argv), stats_mode=("-s" in sys.argv))
 	else:
 		print("Too many arguments")
