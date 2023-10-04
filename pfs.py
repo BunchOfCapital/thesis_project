@@ -536,6 +536,7 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 	ax2[1].set_title("External/Expressed Opinions")
 	final_opinions = ax2[0].hist(agents[:,INT_OPINION], bins=50, range=(0.0, 1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
 	final_expressions = ax2[1].hist(agents[:,EXT_OPINION], bins=2, range=(0.0,1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
+	plt.savefig(fname="opinion_distribution.png", format='pdf')
 	plt.show()
 
 	#PLOT STATISTICS

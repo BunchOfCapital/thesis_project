@@ -219,16 +219,26 @@ def run_dgf(network_size, num_iterations, num_issues, facebook=False):
 
 	print("Initial Opinion Vector: \n", opinions)
 	print("Initial Weights Vector: \n", weights)
+	plotted = False
 	for i in range(num_issues):
 		print("Beginning Issue ", i)
 		converged = False
+		opinion_record = np.zeros((num_iterations, network_size), dtype=float)
 		for j in range(num_iterations):
 			print("beginning iteration ", j)
 			opinions = iterate_network(network, weights, opinions)
+			opinion_record[j] = opinions[:]
 			#print(opinions)
 			if (not converged and len(set(np.around(opinions, decimals=10))) == 1):
 				print("Opinion Convergence achieved on iteration ", j, " of issue ", i)
 				converged = True
+
+		if not plotted:
+			plt.plot(opinion_record, linestyle='dashed')
+			plt.title("Random sample of agent opinions ("+str(network_size)+" nodes)")
+			plt.savefig(fname="opinions_f"+str(facebook)+".pdf", format='pdf')
+			plt.show()
+			plotted=True
 
 		weights = iterate_confidence(network, weights)
 		print(weights)
@@ -238,9 +248,10 @@ def run_dgf(network_size, num_iterations, num_issues, facebook=False):
 	print("Final Opinion Vector: \n", opinions)
 	print("Final Weights Vector: \n", weights)
 	print(self_weights.shape)
-	plt.plot(self_weights[:,:30], linestyle='dashed')
+	sample = np.random.randint(low=0, high=network_size-1, size=30)
+	plt.plot(self_weights[:,sample], linestyle='dashed')
 	plt.title("Random sample of agent self-weights (" + str(network_size) + " nodes, " + str(num_iterations) + " iterations per issue)")
-	plt.savefig(fname="self_weights_f"+str(facebook)+".pdf", format='pdf')
+	plt.savefig(fname="self_weights_f"+str(facebook)+"_2.pdf", format='pdf')
 	plt.show()
 
 	return network, weights, opinions
