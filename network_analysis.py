@@ -12,7 +12,7 @@ def main(file_name, num_nodes):
 
 	new_values = []
 	for i in range(input_data.shape[0]):
-		if (np.random.rand() < 0.7 ):
+		if (np.random.rand() < 0.3 ):
 			new_values.append(input_data[i])
 	
 	data =  np.array(new_values)
@@ -34,7 +34,6 @@ def main(file_name, num_nodes):
 	adj_mat = np.zeros((num_nodes,num_nodes))
 	for edge in data:
 		adj_mat[int(edge[0])][int(edge[1])] = 1
-
 
 	#calc cliques
 	cliquishness = np.zeros(num_nodes)
