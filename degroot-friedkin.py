@@ -12,6 +12,7 @@ import sys
 from matplotlib import pyplot as plt
 import numpy.ma as ma
 
+connectedness = 1.0
 
 def parse_file(filename,):
 	values = np.loadtxt(filename, dtype=int)
@@ -34,6 +35,13 @@ def gen_facebook_net(size=4039):
 	#add self loops to represent self-weight
 	for i in range(size):
 		network[i][i] = 0
+
+	#add random edges
+	for i in range(size):
+		for j in range(size):
+			val = np.random.rand()
+			if val < connectedness:
+				network[i][j] = 0
 	return network
 
 
@@ -236,8 +244,7 @@ def run_dgf(network_size, num_iterations, num_issues, facebook=False):
 		if not plotted:
 			plt.plot(opinion_record, linestyle='dashed')
 			plt.title("Random sample of agent opinions ("+str(network_size)+" nodes)")
-			plt.savefig(fname="opinions_f"+str(facebook)+".pdf", format='pdf')
-			plt.show()
+			plt.savefig(fname="opinions_f"+str(facebook)+"size_"+str(network_size)+"conn_"+str(connectedness)+".pdf", format='pdf')
 			plotted=True
 
 		weights = iterate_confidence(network, weights)
@@ -251,7 +258,7 @@ def run_dgf(network_size, num_iterations, num_issues, facebook=False):
 	sample = np.random.randint(low=0, high=network_size-1, size=30)
 	plt.plot(self_weights[:,sample], linestyle='dashed')
 	plt.title("Random sample of agent self-weights (" + str(network_size) + " nodes, " + str(num_iterations) + " iterations per issue)")
-	plt.savefig(fname="self_weights_f"+str(facebook)+"_2.pdf", format='pdf')
+	plt.savefig(fname="self_weights_f"+str(facebook)+"conn_"+str(connectedness)+"_2.pdf", format='pdf')
 	plt.show()
 
 	return network, weights, opinions
@@ -263,6 +270,8 @@ if __name__ == "__main__":
 		exit()
 	else:
 		if ("-f" in sys.argv):
-			_, _, opinions = run_dgf(4039, int(sys.argv[2]), int(sys.argv[3]), facebook=True)
+			for connectivity in [0.001]:
+				connectedness = connectivity
+				_, _, opinions = run_dgf(4039, int(sys.argv[2]), int(sys.argv[3]), facebook=True)
 		else: 
 			_, _, opinions = run_dgf(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]))
