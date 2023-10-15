@@ -244,7 +244,7 @@ def run_dgf(network_size, num_iterations, num_issues, facebook=False):
 		if not plotted:
 			plt.plot(opinion_record, linestyle='dashed')
 			plt.title("Random sample of agent opinions ("+str(network_size)+" nodes)")
-			plt.savefig(fname="opinions_f"+str(facebook)+"size_"+str(network_size)+"conn_"+str(connectedness)+".pdf", format='pdf')
+			plt.savefig(fname="opinions_f"+str(facebook)+"size_"+str(network_size)+"conn_"+str(connectedness)+"_4.pdf", format='pdf')
 			plotted=True
 
 		weights = iterate_confidence(network, weights)
@@ -256,9 +256,10 @@ def run_dgf(network_size, num_iterations, num_issues, facebook=False):
 	print("Final Weights Vector: \n", weights)
 	print(self_weights.shape)
 	sample = np.random.randint(low=0, high=network_size-1, size=30)
+	plt.cla()
 	plt.plot(self_weights[:,sample], linestyle='dashed')
 	plt.title("Random sample of agent self-weights (" + str(network_size) + " nodes, " + str(num_iterations) + " iterations per issue)")
-	plt.savefig(fname="self_weights_f"+str(facebook)+"conn_"+str(connectedness)+"_2.pdf", format='pdf')
+	plt.savefig(fname="self_weights_f"+str(facebook)+"conn_"+str(connectedness)+"_4.pdf", format='pdf')
 	plt.show()
 
 	return network, weights, opinions
@@ -270,7 +271,7 @@ if __name__ == "__main__":
 		exit()
 	else:
 		if ("-f" in sys.argv):
-			for connectivity in [0.001]:
+			for connectivity in [0.001, 0.1, 0.3]:
 				connectedness = connectivity
 				_, _, opinions = run_dgf(4039, int(sys.argv[2]), int(sys.argv[3]), facebook=True)
 		else: 
