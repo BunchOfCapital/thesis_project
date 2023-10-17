@@ -321,7 +321,7 @@ def iterate_network(network, agents, P, stats_mode=False, stats_buffer={}):
 	#create a list of neighbourhoods that will be added to later
 	neighbourhoods = []
 
-	neighbourhoods = gen_square_neighbourhoods()
+	#neighbourhoods = gen_square_neighbourhoods()
 
 	reference_opinions = 0
 
@@ -536,7 +536,7 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 	ax2[1].set_title("External/Expressed Opinions")
 	final_opinions = ax2[0].hist(agents[:,INT_OPINION], bins=50, range=(0.0, 1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
 	final_expressions = ax2[1].hist(agents[:,EXT_OPINION], bins=2, range=(0.0,1.0), facecolor = '#2ab0ff', edgecolor='#169acf')
-	plt.show()
+	plt.show(block=True)
 
 	#PLOT STATISTICS
 	if (stats_mode):
@@ -586,12 +586,12 @@ def main(size, segregation, P, iterations, sample_data=False, stats_mode=False):
 
 		fig3.tight_layout()
 		#fig3.savefig("data/pfs_p" + str(P) + "_s" + str(segregation) + "_i" + str(iterations) + ".png")
-		plt.show()
+		plt.show(block=True)
 
-	print("Average Neighbourhood Sizes:")
-	print(stats_buffer["hood_sizes"])
+	if (stats_mode):
+		print("Average Neighbourhood Sizes:")
+		print(stats_buffer["hood_sizes"])
 
-	input()
 	return
 
 if __name__ == "__main__":
